@@ -41,8 +41,12 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.wearable.DataApi;
+import com.google.android.gms.wearable.DataEvent;
 import com.google.android.gms.wearable.DataEventBuffer;
+import com.google.android.gms.wearable.DataItem;
 import com.google.android.gms.wearable.DataItemBuffer;
+import com.google.android.gms.wearable.DataMap;
+import com.google.android.gms.wearable.DataMapItem;
 import com.google.android.gms.wearable.Wearable;
 
 import java.lang.ref.WeakReference;
@@ -67,6 +71,10 @@ public class MyWatchFace extends CanvasWatchFaceService {
      * Handler message id for updating the time periodically in interactive mode.
      */
     private static final int MSG_UPDATE_TIME = 0;
+    private String minTemp = "";
+    private String maxTemp = "";
+    private int weatherImageId = -1;
+
 
 
     @Override
@@ -75,6 +83,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
     }
 
     private static class EngineHandler extends Handler {
+
         private final WeakReference<MyWatchFace.Engine> mWeakReference;
 
         public EngineHandler(MyWatchFace.Engine reference) {
@@ -127,6 +136,8 @@ public class MyWatchFace extends CanvasWatchFaceService {
 
         @Override
         public void onConnected(@Nullable Bundle bundle) {
+            Wearable.DataApi.addListener(googleApiClient,this);
+            Wearable.DataApi.getDataItems(googleApiClient).setResultCallback(this);
 
         }
 
@@ -137,6 +148,21 @@ public class MyWatchFace extends CanvasWatchFaceService {
 
         @Override
         public void onDataChanged(DataEventBuffer dataEventBuffer) {
+            for (DataEvent event : dataEventBuffer) {
+                if (event.getType() == DataEvent.TYPE_CHANGED) {
+                    DataItem item = event.getDataItem();
+                    if (item.getUri().getPath().compareTo("/weather_data") == 0) {
+                        DataMap dataMap = DataMapItem.fromDataItem(item).getDataMap();
+                        minTemp = dataMap.getString("min_temp");
+                        maxTemp = dataMap.getString("max_temp");
+                        weatherImageId = dataMap.getInt("weather_image_id");
+                    }
+                }
+            }
+            dataEventBuffer.release();
+            if (isVisible() && !isInAmbientMode()) {
+                invalidate();
+            }
 
         }
 
@@ -147,6 +173,18 @@ public class MyWatchFace extends CanvasWatchFaceService {
 
         @Override
         public void onResult(@NonNull DataItemBuffer dataItems) {
+            for (DataItem dataItem:dataItems){
+                if (dataItem.getUri().getPath().compareTo("/weather_data") == 0) {
+                    DataMap dataMap = DataMapItem.fromDataItem(dataItem).getDataMap();
+                    minTemp = dataMap.getString("min_temp");
+                    maxTemp = dataMap.getString("max_temp");
+                    weatherImageId = dataMap.getInt("weather_image_id");
+                }
+            }
+            dataItems.release();
+            if (isVisible() && !isInAmbientMode()) {
+                invalidate();
+            }
 
         }
 
